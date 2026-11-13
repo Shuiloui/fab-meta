@@ -1,11 +1,10 @@
-# Met à jour les données et publie le site sur GitHub Pages.
-# Se lance chaque nuit, à chaque modification de main, ou à la main
-# (onglet Actions > "Mettre à jour le site" > "Run workflow").
+# Reconstruit et publie le site sur GitHub Pages.
+# Se lance à chaque modification de main (par exemple quand tu ajoutes
+# des résultats dans data/resultats.csv) ou à la main
+# (Actions > "Mettre à jour le site" > "Run workflow").
 name: Mettre à jour le site
 
 on:
-  schedule:
-    - cron: "0 4 * * *" # tous les jours à 4 h UTC (5 h ou 6 h à Paris)
   push:
     branches: [main]
   workflow_dispatch:
@@ -29,8 +28,6 @@ jobs:
           python-version: "3.12"
       - name: Tests
         run: python -m unittest discover tests
-      - name: Récupérer les decklists sur fabtcg.com
-        run: python scripts/fetch_decklists.py
       - name: Construire le site
         run: python scripts/build_site.py
       - uses: actions/configure-pages@v5

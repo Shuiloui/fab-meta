@@ -1,67 +1,62 @@
-"""Tests rapides, sans réseau : python3 -m unittest discover tests"""
+"""Tests rapides : python3 -m unittest discover tests"""
 
-import json
 import sys
+import tempfile
 import unittest
 from pathlib import Path
-from unittest import mock
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
-import fetch_decklists as fd  # noqa: E402
+ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT / "scripts"))
+import build_site as bs  # noqa: E402
 
-
-def row(country, date, name, url, event, fmt, hero, rank):
-    return (
-        f"<tr><td>{country}</td><td>{date}</td><td><a href='{url}'>{name}</a></td>"
-        f"<td><a href='https://fabtcg.com/e/'>{event}</a></td><td>{fmt}</td><td>{hero}</td><td>{rank}</td></tr>"
-    )
+HEADER = "date,heros,joueur,tournoi,place,pays,lien_decklist,lien_tournoi\n"
 
 
-HEAD = (
-    "<table><thead><tr><th>Country/Region</th><th>Date</th><th>Name</th><th>Event</th>"
-    "<th>Format</th><th>Hero</th><th>Rank</th></tr></thead><tbody>"
-)
-PAGE1 = HEAD + "".join([
-    row("Australia", "12 Nov 2026", "Jackie Rousseau &#8211; Aurora &#8211; Primed to Fight",
-        "https://fabtcg.com/decklists/a/", "Primed to Fight", "Silver Age", "Aurora", ""),
-    row("Slovenia", "08 Nov 2026", "Davorin Pokorn – Ira, Crimson Haze – Showdown",
-        "https://fabtcg.com/decklists/b/", "Sunday Showdown: Paris 2026", "Silver Age", "Ira, Crimson Haze", "1st"),
-    row("Canada", "07 Nov 2026", "Matt Muus – Teklovossen – Calling",
-        "https://fabtcg.com/decklists/c/", "Calling: Paris 2026", "Classic Constructed", "Teklovossen", "1st"),
-]) + "</tbody></table>"
-PAGE2 = HEAD + "".join([
-    row("France", "27 Oct 2026", "Léa X – Aurora – Showdown",
-        "https://fabtcg.com/decklists/d/", "Sunday Showdown: Paris 2026", "Silver Age", "Aurora", "5th"),
-    row("France", "20 Oct 2026", "Old – Aurora – Old",
-        "https://fabtcg.com/decklists/e/", "Old event", "Silver Age", "Aurora", "1st"),
-]) + "</tbody></table>"
-PAGE3 = HEAD + row("France", "01 Oct 2026", "Older – Kano – x",
-                   "https://fabtcg.com/decklists/f/", "x", "Silver Age", "Kano", "1st") + "</tbody></table>"
+def write_csv(text: str) -> Path:
+    tmp = tempfile.NamedTemporaryFile("w", suffix=".csv", delete=False, encoding="utf-8")
+    tmp.write(HEADER + text)
+    tmp.close()
+    return Path(tmp.name)
 
 
-class FetchTests(unittest.TestCase):
-    def test_parse_values(self):
-        self.assertEqual(fd.parse_rank("1st"), 1)
-        self.assertEqual(fd.parse_rank("Top 8"), 8)
-        self.assertIsNone(fd.parse_rank(""))
-        self.assertEqual(str(fd.parse_date("08 Nov 2026")), "2026-11-08")
-        self.assertEqual(str(fd.parse_date("November 8, 2026")), "2026-11-08")
-
-    def test_collect_filters_format_and_date(self):
-        pages = {fd.page_url(1): PAGE1, fd.page_url(2): PAGE2, fd.page_url(3): PAGE3}
-        config = {"format": "Silver Age", "since": "2026-10-26", "max_pages": 10}
-        with mock.patch.object(fd, "fetch", side_effect=lambda u: pages[u]), \
-                mock.patch.object(fd.time, "sleep"):
-            decks = fd.collect(config)
-        self.assertEqual([d["url"][-2] for d in decks], ["a", "b", "d"])
-        self.assertEqual(decks[0]["player"], "Jackie Rousseau")
+class LoadTests(unittest.TestCase):
+    def test_reads_and_filters_by_date(self):
+        path = write_csv(
+            '2026-11-08,"Ira, Crimson Haze",Davorin,Showdown,1,Slovenia,https://a/,\n'
+            "2026-11-12,Aurora,Jackie,Primed,,Australia,,\n"
+            "2026-10-01,Kano,Old,Old event,1,France,,\n"
+        )
+        decks = bs.load_results(path, "2026-10-26")
+        self.assertEqual([d["player"] for d in decks], ["Jackie", "Davorin"])
         self.assertEqual(decks[1]["hero"], "Ira, Crimson Haze")
         self.assertEqual(decks[1]["rank"], 1)
         self.assertIsNone(decks[0]["rank"])
+        self.assertIsNone(decks[0]["url"])
 
-    def test_no_table_raises(self):
-        with self.assertRaises(ValueError):
-            fd.parse_listing("<html><body>rien</body></html>")
+    def test_reports_bad_lines(self):
+        path = write_csv("12/11/2026,Aurora,Jackie,Primed,,,,\n2026-11-12,,Jackie,Primed,1er,,,\n")
+        with self.assertRaises(bs.DataError) as ctx:
+            bs.load_results(path, "2026-10-26")
+        msg = str(ctx.exception)
+        self.assertIn("ligne 2", msg)
+        self.assertIn("ligne 3", msg)
+
+    def test_stats(self):
+        decks = [
+            {"hero": "Aurora", "rank": 1, "event": "A"},
+            {"hero": "Aurora", "rank": 9, "event": "B"},
+            {"hero": "Kano", "rank": 3, "event": "A"},
+            {"hero": "Kano", "rank": None, "event": "A"},
+        ]
+        stats = {r["hero"]: r for r in bs.hero_stats(decks)}
+        self.assertEqual(stats["Aurora"]["wins"], 1)
+        self.assertEqual(stats["Aurora"]["top8"], 1)
+        self.assertEqual(stats["Kano"]["events"], 1)
+        self.assertAlmostEqual(stats["Kano"]["share"], 50.0)
+
+    def test_repository_csv_is_valid(self):
+        config = bs.json.loads((ROOT / "config.json").read_text(encoding="utf-8"))
+        bs.load_results(ROOT / "data" / "resultats.csv", config["since"])
 
 
 if __name__ == "__main__":

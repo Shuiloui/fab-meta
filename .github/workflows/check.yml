@@ -1,5 +1,5 @@
-# Vérifie une pull request : tests, récupération réelle des données et
-# construction du site, sans rien publier. Le site construit est
+# Vérifie une pull request : tests (dont la validité de data/resultats.csv)
+# et construction du site, sans rien publier. Le site construit est
 # téléchargeable dans l'onglet "Summary" du run (artefact "apercu-site").
 name: Vérifier
 
@@ -20,8 +20,6 @@ jobs:
           python-version: "3.12"
       - name: Tests
         run: python -m unittest discover tests
-      - name: Récupérer les decklists sur fabtcg.com
-        run: python scripts/fetch_decklists.py
       - name: Construire le site
         run: python scripts/build_site.py
       - uses: actions/upload-artifact@v4

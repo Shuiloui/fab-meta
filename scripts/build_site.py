@@ -1,17 +1,19 @@
-"""Construit le site statique à partir de data/decklists.json.
+"""Construit le site statique à partir de data/resultats.csv.
 
+Le fichier CSV est rempli à la main (une ligne par decklist).
 Calcule, pour chaque héros : nombre de decklists, part de la meta,
 victoires (1re place) et présences en top 8. Écrit le tout dans site/.
 """
 
 from __future__ import annotations
 
+import csv
 import html
 import json
 import shutil
 import sys
 from collections import defaultdict
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -44,6 +46,59 @@ def link(url: str | None, text: str) -> str:
     if not url:
         return esc(text)
     return f'<a href="{esc(url)}" rel="noopener">{esc(text)}</a>'
+
+
+CSV_COLUMNS = ["date", "heros", "joueur", "tournoi", "place", "pays", "lien_decklist", "lien_tournoi"]
+
+
+class DataError(ValueError):
+    pass
+
+
+def load_results(path: Path, since: str) -> list[dict]:
+    """Lit le CSV, vérifie chaque ligne et garde celles depuis la date `since`."""
+    since_date = date.fromisoformat(since)
+    errors: list[str] = []
+    decks: list[dict] = []
+    with path.open(encoding="utf-8-sig", newline="") as fh:
+        reader = csv.DictReader(fh)
+        missing = [c for c in CSV_COLUMNS[:4] if c not in (reader.fieldnames or [])]
+        if missing:
+            raise DataError(f"Colonnes manquantes dans {path.name} : {', '.join(missing)}")
+        for line, row in enumerate(reader, start=2):
+            row = {k: (v or "").strip() for k, v in row.items() if k}
+            if not any(row.values()):
+                continue
+            try:
+                d = date.fromisoformat(row["date"])
+            except ValueError:
+                errors.append(f"ligne {line} : date « {row['date']} » invalide (format attendu AAAA-MM-JJ)")
+                continue
+            for col in ("heros", "joueur", "tournoi"):
+                if not row.get(col):
+                    errors.append(f"ligne {line} : la colonne « {col} » est vide")
+            place = row.get("place", "")
+            if place and not place.isdigit():
+                errors.append(f"ligne {line} : place « {place} » invalide (un nombre, ou vide)")
+                continue
+            if d < since_date:
+                continue
+            decks.append(
+                {
+                    "date": d.isoformat(),
+                    "hero": row.get("heros", ""),
+                    "player": row.get("joueur", ""),
+                    "event": row.get("tournoi", ""),
+                    "rank": int(place) if place else None,
+                    "country": row.get("pays", ""),
+                    "url": row.get("lien_decklist") or None,
+                    "event_url": row.get("lien_tournoi") or None,
+                }
+            )
+    if errors:
+        raise DataError("Erreurs dans " + path.name + " :\n  " + "\n  ".join(errors))
+    decks.sort(key=lambda x: (x["date"], -(x["rank"] or 999)), reverse=True)
+    return decks
 
 
 def hero_stats(decks: list[dict]) -> list[dict]:
@@ -135,14 +190,14 @@ def decklist_table(decks: list[dict]) -> str:
 
 def build() -> int:
     config = json.loads((ROOT / "config.json").read_text(encoding="utf-8"))
-    data_file = ROOT / "data" / "decklists.json"
-    if not data_file.exists():
-        print("data/decklists.json manquant : lance d'abord scripts/fetch_decklists.py", file=sys.stderr)
+    data_file = ROOT / "data" / "resultats.csv"
+    try:
+        decks = load_results(data_file, config["since"])
+    except (OSError, DataError) as err:
+        print(err, file=sys.stderr)
         return 1
-    data = json.loads(data_file.read_text(encoding="utf-8"))
-    decks = data["decklists"]
     heroes = hero_stats(decks)
-    fetched = datetime.fromisoformat(data["fetched_at"].replace("Z", "+00:00"))
+    fetched = datetime.now(timezone.utc)
 
     values = {
         "FORMAT": esc(config["format"]),
@@ -175,7 +230,7 @@ def build() -> int:
     (OUT / "index.html").write_text(page, encoding="utf-8")
     for asset in ("style.css", "app.js"):
         shutil.copy(TEMPLATES / asset, OUT / asset)
-    shutil.copy(data_file, OUT / "decklists.json")
+    shutil.copy(data_file, OUT / "resultats.csv")
     print(f"Site généré dans site/ ({len(decks)} decklists, {len(heroes)} héros)")
     return 0
 

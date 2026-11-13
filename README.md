@@ -6,12 +6,9 @@ La page montre, depuis la dernière banlist, la part de la meta de chaque héros
 
 ## Comment ça marche
 
-Chaque nuit, GitHub lance automatiquement deux petits scripts Python :
+Les résultats sont dans un simple tableau, `data/resultats.csv`, rempli à la main. À chaque modification, GitHub vérifie le fichier, recalcule les statistiques (`scripts/build_site.py`) et publie la page sur GitHub Pages. Rien à installer.
 
-1. `scripts/fetch_decklists.py` lit le tableau des decklists sur fabtcg.com et garde celles du format Silver Age publiées depuis la date de `config.json`.
-2. `scripts/build_site.py` calcule les statistiques et fabrique la page web dans le dossier `site/`.
-
-Le site est ensuite publié sur GitHub Pages. Rien à installer, rien à lancer à la main.
+> Pourquoi pas de récupération automatique ? fabtcg.com refuse les requêtes automatiques (erreur 403) et ses conditions d'utilisation demandent un accord écrit pour reprendre son contenu. On pourra automatiser si Legend Story Studios ou un site de meta donne son accord.
 
 ## Mise en route (une seule fois)
 
@@ -20,25 +17,35 @@ Le site est ensuite publié sur GitHub Pages. Rien à installer, rien à lancer 
 3. Va dans l'onglet **Actions**, clique sur **Mettre à jour le site** puis **Run workflow**.
 4. Après deux ou trois minutes, le site est visible à l'adresse `https://shuiloui.github.io/fab-meta/`.
 
+## Ajouter des résultats
+
+1. Sur GitHub, ouvre `data/resultats.csv` et clique sur l'icône crayon.
+2. Ajoute une ligne par decklist, en recopiant les infos de [fabtcg.com/decklists](https://fabtcg.com/decklists/) :
+
+| Colonne | Exemple | Remarque |
+|---|---|---|
+| `date` | `2026-11-08` | format AAAA-MM-JJ |
+| `heros` | `"Ira, Crimson Haze"` | guillemets si le nom contient une virgule |
+| `joueur` | `Davorin Pokorn` | |
+| `tournoi` | `Sunday Showdown: Paris 2026` | |
+| `place` | `1` | un nombre, ou vide si inconnue |
+| `pays` | `Slovenia` | facultatif |
+| `lien_decklist` | `https://fabtcg.com/decklists/...` | facultatif mais conseillé (source) |
+| `lien_tournoi` | `https://fabtcg.com/...` | facultatif |
+
+3. Clique sur **Commit changes**. Si une ligne est mal remplie, l'onglet Actions affiche une croix rouge avec le numéro de la ligne à corriger, et l'ancienne version du site reste en ligne.
+
 ## Après une nouvelle banlist
 
-Ouvre `config.json` sur GitHub (icône crayon pour modifier) et change :
-
-- `since` : la date de la nouvelle banlist, au format `AAAA-MM-JJ` ;
-- `since_label` et `since_url` : le nom et le lien de l'annonce ;
-- `next_banlist` : la date de la banlist suivante si elle est connue.
-
-Enregistre (« Commit changes ») : le site se met à jour tout seul.
+Ouvre `config.json` et change `since` (date de la banlist, AAAA-MM-JJ), `since_label`, `since_url` et `next_banlist`. Les résultats plus anciens restent dans le CSV mais ne sont plus comptés.
 
 ## Lancer en local (facultatif)
 
 ```bash
-python3 scripts/fetch_decklists.py
-python3 scripts/build_site.py
-# puis ouvrir site/index.html dans un navigateur
-python3 -m unittest discover tests   # tests, sans réseau
+python3 scripts/build_site.py      # puis ouvrir site/index.html
+python3 -m unittest discover tests
 ```
 
 ## Mentions
 
-Flesh and Blood™ et tous les noms de cartes et de héros sont © Legend Story Studios. Ce site n'est ni affilié ni approuvé par Legend Story Studios. Chaque statistique renvoie vers sa source.
+Flesh and Blood™ et tous les noms de cartes et de héros sont © Legend Story Studios. Ce site n'est ni affilié ni approuvé par Legend Story Studios. Chaque résultat renvoie vers sa source.
