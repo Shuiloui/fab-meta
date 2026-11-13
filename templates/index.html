@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Meta {{FORMAT}} – Flesh and Blood</title>
+  <meta name="description" content="Héros les plus joués et les plus performants en {{FORMAT}} (Flesh and Blood) depuis la dernière banlist, d'après les decklists officielles.">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="wrap">
+      <p class="eyebrow">Flesh and Blood · site de fans</p>
+      <h1>Meta {{FORMAT}}</h1>
+      <p class="lede">Les héros qui se montrent en tournoi depuis la <a href="{{SINCE_URL}}" rel="noopener">{{SINCE_LABEL}}</a> (le {{SINCE}}), calculés à partir des decklists officielles publiées par Legend Story Studios.</p>
+      <p class="updated">Mis à jour le {{UPDATED}} · prochaine banlist prévue le {{NEXT_BANLIST}}</p>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <section class="tiles" aria-label="Chiffres clés">
+      <div class="tile"><span class="tile-value">{{TOTAL_DECKS}}</span><span class="tile-label">decklists</span></div>
+      <div class="tile"><span class="tile-value">{{TOTAL_HEROES}}</span><span class="tile-label">héros différents</span></div>
+      <div class="tile"><span class="tile-value">{{TOTAL_EVENTS}}</span><span class="tile-label">tournois</span></div>
+      <div class="tile"><span class="tile-value">{{TOTAL_WINS}}</span><span class="tile-label">victoires publiées</span></div>
+    </section>
+
+    <section>
+      <h2>Part de la meta par héros</h2>
+      <p class="muted small">Part = pourcentage des decklists publiées jouant ce héros. Clique sur un titre de colonne pour trier.</p>
+      <div class="table-scroll">
+        <table class="sortable heroes">
+          <thead>
+            <tr>
+              <th class="num" scope="col">#</th>
+              <th scope="col">Héros</th>
+              <th scope="col" class="bar-head">Part de la meta</th>
+              <th class="num" scope="col">Decklists</th>
+              <th class="num" scope="col">Victoires</th>
+              <th class="num" scope="col">Top 8</th>
+              <th class="num" scope="col">Tournois</th>
+            </tr>
+          </thead>
+          <tbody>
+{{HERO_ROWS}}
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <div class="two-col">
+      <section>
+        <h2>Derniers vainqueurs</h2>
+{{WINNERS}}
+      </section>
+      <section>
+        <h2>Pour aller plus loin</h2>
+        <p class="muted small">Ces sites calculent aussi les taux de victoire et les matchups :</p>
+        <ul class="links">
+{{EXTERNAL_LINKS}}
+        </ul>
+      </section>
+    </div>
+
+    <section>
+      <h2>Toutes les decklists</h2>
+      <label class="filter">Filtrer : <input type="search" id="deck-filter" placeholder="héros, joueur, tournoi, pays…"></label>
+      <div class="table-scroll">
+        <table class="sortable decks" id="deck-table">
+          <thead>
+            <tr>
+              <th scope="col">Date</th>
+              <th scope="col">Héros</th>
+              <th scope="col">Joueur</th>
+              <th scope="col">Tournoi</th>
+              <th class="num" scope="col">Place</th>
+              <th scope="col">Pays</th>
+            </tr>
+          </thead>
+          <tbody>
+{{DECK_ROWS}}
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="method">
+      <h2>D'où viennent ces chiffres ?</h2>
+      <p>Chaque nuit, un script lit la page <a href="https://fabtcg.com/decklists/" rel="noopener">decklists officielle de fabtcg.com</a>, garde les decklists {{FORMAT}} publiées depuis le {{SINCE}} et recalcule les statistiques. Les données brutes sont disponibles dans <a href="decklists.json">decklists.json</a>.</p>
+      <p>À savoir : seules les decklists publiées officiellement sont comptées, surtout celles des joueurs bien classés. Ces chiffres montrent donc ce qui performe en haut des tournois, pas tout ce qui est joué.</p>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap">
+      <p>Site de fans non commercial, non affilié à Legend Story Studios. Flesh and Blood™ et tous les noms de cartes et de héros sont © {{YEAR}} Legend Story Studios. Données : <a href="https://fabtcg.com/decklists/" rel="noopener">fabtcg.com</a>.</p>
+    </div>
+  </footer>
+  <script src="app.js"></script>
+</body>
+</html>
